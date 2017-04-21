@@ -1,0 +1,183 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a>exiftool (v0.0.3)</a>
+</h1>
+<h4>Metadata extraction from numerous filetypes including JPEG, PNG, PDF, MOV, WMV, MP3, MP4, and others.</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.exiftool">module exiftool</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.exiftool.metadata">
+            function <span class="apidocSignatureSpan">exiftool.</span>metadata
+            <span class="apidocSignatureSpan">(source, tags, doneGettingMetadata)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.exiftool" id="apidoc.module.exiftool">module exiftool</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.exiftool.metadata" id="apidoc.element.exiftool.metadata">
+        function <span class="apidocSignatureSpan">exiftool.</span>metadata
+        <span class="apidocSignatureSpan">(source, tags, doneGettingMetadata)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">metadata = function (source, tags, doneGettingMetadata) {
+  // tags is an optional parameter, hence it may be a callback instead.
+  if (typeof tags == 'function') {
+    doneGettingMetadata = tags;
+    tags = [];
+  }
+
+  // The dash specifies to read data from stdin.
+  var args = (tags === [] ? ['-'] : tags.push("-"));
+  var exif = ChildProcess.spawn('exiftool', tags);
+
+  //Check for error because of the child process not being found / launched.
+  exif.on('error', function (err) {
+    doneGettingMetadata('Fatal Error: Unable to load exiftool. ' + err);
+  });
+
+  // Read the binary data back
+  var response = '';
+  var errorMessage = '';
+  exif.stdout.on("data", function (data) {
+    response += data;
+  });
+
+  // Read an error response back and deal with it.
+  exif.stderr.on("data", function (data) {
+    errorMessage += data.toString();
+  });
+
+  // Handle the response to the callback to hand the metadata back.
+  exif.on("close", function () {
+    if (errorMessage)
+    {
+      doneGettingMetadata(errorMessage);
+    }
+    else
+    {
+      // Split the response into lines.
+      response = response.split("\n");
+
+      //For each line of the response extract the meta data into a nice associative array
+      var metaData = [];
+      response.forEach(function (responseLine) {
+        var pieces = responseLine.split(": ");
+        //Is this a line with a meta data pair on it?
+        if (pieces.length == 2)
+        {
+          //Turn the plain text data key into a camel case key.
+          var key = pieces[0].trim().split(' ').map(
+            function (tokenInKey, tokenNumber) {
+              if (tokenNumber === 0)
+                return tokenInKey.toLowerCase();
+              else
+                return tokenInKey[0].toUpperCase() + tokenInKey.slice(1);
+            }
+          ).join('');
+          //Trim the value associated with the key to make it nice.
+          var value = pieces[1].trim();
+          if (!isNaN(value))
+          {
+            value = parseFloat(value, 10);
+          }
+          metaData[key] = value;
+        }
+      });
+      doneGettingMetadata(null, metaData);
+    }
+  });
+
+  //Give the source binary data to the process which will extract the meta data.
+  exif.stdin.write(source);
+  exif.stdin.end();
+
+  return exif;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+var exif = require('exiftool');
+var fs   = require('fs');
+
+fs.readFile('./tests/resources/chvrches.jpg', function (err, data) {
+  if (err)
+    throw err;
+  else {
+    exif.<span class="apidocCodeKeywordSpan">metadata</span>(data, function (err, metadata) {
+      if (err)
+        throw err;
+      else
+        console.log(metadata);
+    });
+  }
+});
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>
